@@ -16,28 +16,36 @@ You need to have:
 
 3. You can test performance improvements on a local backend API by executing:
 	* Run a performance test (with caching enabled)
-		* ```ab -n 1000 -c 20 https://products-apicast-production.gateway.<*replace with your domain*>:443/rest/services/products?user_key=<*replace with a user_key for this API*>```
+		* `ab -n 1000 -c 20 https://products-apicast-production.gateway.<`*`replace with your domain`*`>:443/rest/services/products?user_key=<`*`replace with a user_key for this API`*`>`
 	* Take note of the results
 	* Disable caching in Apicast
 		* ```foo@bar:~$ oc set env dc/apicast-production APICAST_MODULE=cors.apicast_cors -n 3scale```
 	* Run a second performance test (without caching)
-		* ab -n 1000 -c 20 https://products-apicast-production.gateway.<*replace with your domain*>:443/rest/services/products?user_key=<*replace with a user_key for this API*>
+		* `ab -n 1000 -c 20 https://products-apicast-production.gateway.<`*`replace with your domain`*`>:443/rest/services/products?user_key=<`*`replace with a user_key for this API`*`>`
 	* Compare results with/without caching.
 
 4. You can test the performance improvements on a remote backend API by executing:
 	* Run a performance test (without caching)
-		* ab -n 1000 -c 20 https://api-3scale-apicast-production.<*replace with your domain*>:443?user_key=<*replace with a user_key for this API*>
+		* `ab -n 1000 -c 20 https://api-3scale-apicast-production.<`*`replace with your domain`*`>:443?user_key=<`*`replace with a user_key for this API`*`>`
 	* Take note of the results
 	* Enable caching again
 		* ```foo@bar:~$ oc set env dc/apicast-production APICAST_MODULE=jdg.apicast_jdg -n 3scale```
 	* Run a seconf performance test (with caching enabled)
-		* ab -n 1000 -c 20 https://api-3scale-apicast-production.<*replace with your domain*>:443?user_key=<*replace with a user_key for this API*>
+		* `ab -n 1000 -c 20 https://api-3scale-apicast-production.<`*`replace with your domain`*`>:443?user_key=<`*`replace with a user_key for this API`*`>`
 	* Compare results with/without caching.
-
 
 Example results:
 
 | Backend API | With JDG Caching | Without Caching |
 | :---------- | ---------------: | --------------: |
 | Local	Cluster|min: 15, mean: 58, max: 126 |min: 16, mean: 84, max: 181   |
-| Remote Echo |min: 11, mean: 51, max: 86 |min: 171, mean: 278, max: 917 |	
+| Remote Echo |min: 11, mean: 51, max: 86 |min: 171, mean: 278, max: 917 |
+
+
+	### Notes
+	* JDG expiration for objects is hardcoded to 60sec (this could be made configurable)
+	* You can easily check the existing cached objects at http://datagrid.<replace with your domain>/rest/default
+	* 3scale admin console:
+		* URL: https://3scale-admin.<replace with your domain>
+		* User: admin
+		* Password: admin
