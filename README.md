@@ -42,10 +42,10 @@ Example results:
 | Remote Echo |min: 11, mean: 51, max: 86 |min: 171, mean: 278, max: 917 |
 
 
-	### Notes
-	* JDG expiration for objects is hardcoded to 60sec (this could be made configurable)
-	* You can easily check the existing cached objects at http://datagrid.<replace with your domain>/rest/default
-	* 3scale admin console:
-		* URL: https://3scale-admin.<replace with your domain>
-		* User: admin
-		* Password: admin
+### Notes
+ * JDG expiration for objects is hardcoded to 60sec (this could be made configurable)
+ * You can easily check the existing cached objects at http://datagrid.<replace with your domain>/rest/default
+ * 3scale admin console:
+ * URL: https://3scale-admin.<replace with your domain>
+	* User: admin
+	* Password: admin
