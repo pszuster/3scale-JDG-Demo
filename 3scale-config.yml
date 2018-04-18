@@ -1,0 +1,263 @@
+- name: Setup 3scale-JDG Demo
+  hosts: localhost
+  gather_facts: True
+  connection: local
+  
+  vars:
+          hostname: 192.168.42.51.nip.io
+  tasks:
+     - name: Enable wildcard router
+       command: oc set env dc/router ROUTER_ALLOW_WILDCARD_ROUTES=true -n default
+       tags:
+               - 3scale_setup
+     - name: Delete EAP IS
+       command: oc delete imagestreams jboss-eap70-openshift -n openshift
+       ignore_errors: True
+       tags:
+                - eap_setup
+     - name: Delete JDG IS
+       command: oc delete imagestreams jboss-datagrid71-openshift -n openshift
+       ignore_errors: True
+       tags:
+              - jdg_setup
+     - name: Create new EAP IS
+       command: oc create -f https://raw.githubusercontent.com/jboss-openshift/application-templates/master/eap/eap70-image-stream.json -n openshift
+       ignore_errors: True
+       tags:
+              - eap_setup
+     - name: Create new JDG IS
+       command: oc create -f https://raw.githubusercontent.com/jboss-openshift/application-templates/master/datagrid/datagrid71-image-stream.json -n openshift
+       ignore_errors: True
+       tags:
+              - jdg_setup
+
+     - name: Create JDG basic template
+       command: oc create -f https://raw.githubusercontent.com/jboss-openshift/application-templates/master/datagrid/datagrid71-basic.json -n openshift
+       ignore_errors: True
+       tags:
+              - jdg_setup
+     - name: Create Products API project
+       command: oc new-project products-api --display-name='Products API'
+       ignore_errors: True
+       tags:
+               - eap_setup
+     - name: Add SCC 
+       command: oc adm policy add-scc-to-user anyuid system:serviceaccount:products-api:default
+       tags:
+               - eap_setup
+     - name: Create Products API template
+       command: oc create -f https://raw.githubusercontent.com/pszuster/3ScaleTD/master/templates/products-api.json
+       tags:
+               - eap_setup
+     - name: Create Products API app
+       command: oc new-app --template=products-api --param HOSTNAME_HTTP=products.{{hostname}}
+       tags:
+               - eap_setup
+
+     - name: Create 3scale Project
+       command: oc new-project 3scale --display-name='3scale API Manager'
+       tags:
+               - 3scale_setup
+
+     - name: Create 3scale template
+       command: oc create -f https://raw.githubusercontent.com/pszuster/3scale-JDG-Demo/master/amp_jdg-template.json -n 3scale
+       tags:
+               - 3scale_setup
+     - name: Create 3scale app
+       command: oc new-app --template=threescale-amp-jdg --param WILDCARD_DOMAIN={{hostname}} --param HOSTNAME_HTTP=datagrid.{{hostname}}
+       tags:
+               - 3scale_setup
+
+     - name: Wait for 3scale to be Ready
+       uri:
+               url: https://3scale-admin.{{hostname}}
+               method: GET
+               status_code: 200               
+       register: 3scale_wait
+       until: 3scale_wait.status == 200
+       retries: 10
+       delay: 60
+       tags:
+               - 3scale_config
+
+          
+     - name: Get ADMIN_ACCESS_TOKEN 
+       command: oc env dc system-app -n 3scale -c 'system-provider' -o jsonpath='{$.spec.template.spec.containers[?(@.name=="system-provider")].env[?(@.name=="ADMIN_ACCESS_TOKEN")].value}'
+       register: access_token
+       tags:
+        - 3scale_config
+
+     - name: Debug
+       debug:
+              var: access_token.stdout
+
+     - name: Create API
+       uri:
+         url: https://3scale-admin.{{hostname}}/admin/api/services.json
+         method: POST
+         body: "access_token={{access_token.stdout}}&name=Products+API&system_name=products_api"
+         status_code: 201
+         headers:
+                Content-Type: "application/x-www-form-urlencoded"
+         validate_certs: no
+       register: service
+       tags:
+          - 3scale_config
+     - set_fact:
+         service_id: "{{ service.json |  json_query('service.id') }}"
+       tags:
+          - 3scale_config
+     - debug:
+          msg: "service ID: {{ service_id }}"
+       tags:
+                - 3scale_config
+     - name: Get Metric ID
+       uri:
+          url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service_id }}/metrics.json"
+          method: GET
+          body: "access_token={{access_token.stdout}}"
+          status_code: 200
+          headers:
+              Content-Type: "application/x-www-form-urlencoded"
+          validate_certs: no
+       register: metric
+       tags:
+          - 3scale_config
+     - set_fact: 
+          metric_id: "{{metric.json | json_query('metrics[0].metric.id')}}"
+       tags:
+         - 3scale_config
+     - debug:
+         msg: "metric ID: {{ metric_id }}"
+       tags:
+                - 3scale_config
+     - name: Create Method - AllProducts
+       uri:
+           url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service.json.service.id }}/metrics/{{ metric_id  }}/methods.json"
+           method: POST
+           body: "access_token={{access_token.stdout}}&friendly_name=GET+All+Product&system_name=get_all_products&unit=hit"
+           status_code: 201
+           headers:
+               Content-Type: "application/x-www-form-urlencoded"
+           validate_certs: no
+       register: method_allprods
+       tags:
+                - 3scale_config
+     - set_fact:
+             method_allprods_id: "{{ method_allprods.json | json_query('method.id') }}"
+       tags:
+               - 3scale_config
+     - debug:
+        msg: "All Products ID: {{method_allprods_id}}"
+     - name: Create Method - ProductByID
+       uri:
+           url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service.json.service.id }}/metrics/{{ metric_id  }}/methods.json"
+           method: POST
+           body: "access_token={{access_token.stdout}}&friendly_name=GET++Product+By+ID&system_name=get_product&unit=hit"
+           status_code: 201
+           headers:
+               Content-Type: "application/x-www-form-urlencoded"
+           validate_certs: no
+       register: method_prodbyid
+       tags:
+                - 3scale_config
+     - set_fact:
+             method_prodbyid_id: "{{ method_prodbyid.json | json_query('method.id') }}"
+       tags:
+               - 3scale_config
+     - debug:
+        msg: "ProductsByID ID: {{method_prodbyid_id}}"
+
+     - name: Create Mapping - All Products
+       uri: 
+          url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service.json.service.id }}/proxy/mapping_rules.json"
+          method: POST
+          body: "access_token={{access_token.stdout}}&http_method=GET&pattern=/rest/services/products&delta=1&metric_id={{method_allprods_id}}"
+          status_code: 201
+          headers:
+               Content-Type: "application/x-www-form-urlencoded"
+          validate_certs: no
+       tags:
+                - 3scale_config
+     - name: Create Mapping - Product by ID
+       uri:
+          url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service.json.service.id }}/proxy/mapping_rules.json"
+          method: POST
+          body: "access_token={{access_token.stdout}}&http_method=GET&pattern=/rest/services/product/{id}&delta=1&metric_id={{method_prodbyid_id}}"
+          status_code: 201
+          headers:
+               Content-Type: "application/x-www-form-urlencoded"
+          validate_certs: no
+       tags:
+                - 3scale_config
+     - name: Create Application Plan
+       uri:
+        url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service_id }}/application_plans.json"
+        method: POST
+        body: "access_token={{access_token.stdout}}&name=Products+Plan&system_name=products__plan"
+        status_code: 201
+        headers:
+                Content-Type: "application/x-www-form-urlencoded"
+        validate_certs: no
+       register: application_plan
+       tags:
+                - 3scale_config
+     - set_fact:
+        application_plan_id: "{{ application_plan.json |  json_query('application_plan.id') }}"
+       tags:
+        - 3scale_config
+
+     - name: Create Account
+       uri:
+        url: "https://3scale-admin.{{hostname}}/admin/api/signup.json"
+        method: POST
+        body: "access_token={{access_token.stdout}}&org_name=RHMart&username=rhmart&email=rhmart%40rhmart.com&password=rhmart%40rhmart.com&application_plan_id={{ application_plan_id}}"
+        status_code: 201
+        headers:
+                Content-Type: "application/x-www-form-urlencoded"
+        validate_certs: no
+       register: account
+       tags:
+                - 3scale_config
+     - set_fact:
+        account_id: "{{ account.json | json_query('account.id') }}"
+       tags:
+         - 3scale_config
+     - debug:
+        msg: "params: app_plan_id: {{application_plan_id}}, "
+       tags:
+         - 3scale_config
+     - name: Create Application
+       uri:
+        url: "https://3scale-admin.{{hostname}}/admin/api/accounts/{{ account_id }}/applications.json"
+        method: POST
+        body: "access_token={{access_token.stdout}}&plan_id={{ application_plan_id}}&name=RHMart&description=RHMart+App"
+        status_code: 201
+        headers:
+                Content-Type: "application/x-www-form-urlencoded"
+        validate_certs: no
+       register: application
+       tags:
+                - 3scale_config
+     - name: Configure Proxy
+       uri:
+        url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service_id }}/proxy.json"
+        method: PATCH
+        body: "access_token={{access_token.stdout}}&api_backend=http%3A%2F%2Fproducts-api.products-api.svc.cluster.local%3A8080&sandbox_endpoint=https%3A%2F%2Fproducts-apicast-staging.gateway.{{hostname}}:443&endpoint=https%3A%2F%2Fproducts-apicast-production.gateway.{{hostname}}:443"
+        status_code: 200
+        headers:
+                Content-Type: "application/x-www-form-urlencoded"
+        validate_certs: no
+       tags:
+        - 3scale_config 
+     - name: Promote Proxy
+       uri:
+          url: "https://3scale-admin.{{hostname}}/admin/api/services/{{service_id}}/proxy/configs/sandbox/1/promote.json"
+          method: POST
+          body: "access_token={{access_token.stdout}}&to=production"
+          status_code: 201
+          headers:
+                  Content-Type: "application/x-www-form-urlencoded"
+          validate_certs: no
+       tags:
+        - 3scale_config
