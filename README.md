@@ -46,6 +46,6 @@ Example results:
  * JDG expiration for objects is hardcoded to 60sec (this could be made configurable)
  * You can easily check the existing cached objects at http://datagrid.<replace with your domain>/rest/default
  * 3scale admin console:
- * URL: https://3scale-admin.<replace with your domain>
+ * URL: https://3scale-admin.< *replace with your domain* >
 	* User: admin
 	* Password: admin
