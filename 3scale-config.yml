@@ -242,7 +242,7 @@
        register: application
        tags:
                 - 3scale_config
-     - name: Configure Proxy
+     - name: Configure Products API Proxy
        uri:
         url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service_id }}/proxy.json"
         method: PATCH
@@ -253,9 +253,31 @@
         validate_certs: no
        tags:
         - 3scale_config 
-     - name: Promote Proxy
+     - name: Promote Products API Proxy
        uri:
           url: "https://3scale-admin.{{hostname}}/admin/api/services/{{service_id}}/proxy/configs/sandbox/1/promote.json"
+          method: POST
+          body: "access_token={{access_token.stdout}}&to=production"
+          status_code: 201
+          headers:
+                  Content-Type: "application/x-www-form-urlencoded"
+          validate_certs: no
+       tags:
+        - 3scale_config
+     - name: Configure OOTB API Proxy
+       uri:
+        url: "https://3scale-admin.{{hostname}}/admin/api/services/2/proxy.json"
+        method: PATCH
+        body: "access_token={{access_token.stdout}}&api_backend=https%3A%2F%2Fecho-api.3scale.net:443&sandbox_endpoint=https%3A%2F%2Fapi-3scale-apicast-staging.{{hostname}}:443&endpoint=https%3A%2F%2Fapi-3scale-apicast-production.{{hostname}}:443"
+        status_code: 200
+        headers:
+                Content-Type: "application/x-www-form-urlencoded"
+        validate_certs: no
+       tags:
+        - 3scale_config
+     - name: Promote OOTB API Proxy
+       uri:
+          url: "https://3scale-admin.{{hostname}}/admin/api/services/2/proxy/configs/sandbox/1/promote.json"
           method: POST
           body: "access_token={{access_token.stdout}}&to=production"
           status_code: 201
