@@ -4,8 +4,16 @@
   connection: local
   
   vars:
-          hostname: 192.168.42.51.nip.io
+          hostname: 192.168.42.72.nip.io
   tasks:
+     - name: OC Login
+       command: oc login -u system:admin
+       tags:
+               - 3scale_setup
+               - 3scale_config
+               - eap_setup
+               - jdg_setup
+     
      - name: Enable wildcard router
        command: oc set env dc/router ROUTER_ALLOW_WILDCARD_ROUTES=true -n default
        tags:
@@ -42,15 +50,15 @@
        tags:
                - eap_setup
      - name: Add SCC 
-       command: oc adm policy add-scc-to-user anyuid system:serviceaccount:products-api:default
+       command: oc adm policy add-scc-to-user anyuid system:serviceaccount:products-api:default -n products-api
        tags:
                - eap_setup
      - name: Create Products API template
-       command: oc create -f https://raw.githubusercontent.com/pszuster/3ScaleTD/master/templates/products-api.json
+       command: oc create -f https://raw.githubusercontent.com/pszuster/3scale-JDG-Demo/master/products-api.json -n products-api
        tags:
                - eap_setup
      - name: Create Products API app
-       command: oc new-app --template=products-api --param HOSTNAME_HTTP=products.{{hostname}}
+       command: oc new-app --template=products-api --param HOSTNAME_HTTP=products.{{hostname}} -n products-api
        tags:
                - eap_setup
 
@@ -69,27 +77,22 @@
                - 3scale_setup
 
      - name: Wait for 3scale to be Ready
-       uri:
-               url: https://3scale-admin.{{hostname}}
-               method: GET
-               status_code: 200               
-       register: 3scale_wait
-       until: 3scale_wait.status == 200
+       uri: url="https://3scale-admin.{{hostname}}" validate_certs=no
+       register: threescale_wait
+       until: threescale_wait.status == 200
        retries: 10
        delay: 60
        tags:
                - 3scale_config
-
-          
+     - debug:
+             msg: "RESPONSE: {{threescale_wait.status}}"
+       tags:
+             - 3scale_config 
      - name: Get ADMIN_ACCESS_TOKEN 
        command: oc env dc system-app -n 3scale -c 'system-provider' -o jsonpath='{$.spec.template.spec.containers[?(@.name=="system-provider")].env[?(@.name=="ADMIN_ACCESS_TOKEN")].value}'
        register: access_token
        tags:
         - 3scale_config
-
-     - name: Debug
-       debug:
-              var: access_token.stdout
 
      - name: Create API
        uri:
