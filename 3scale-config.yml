@@ -4,7 +4,7 @@
   connection: local
   
   vars:
-          hostname: 192.168.42.72.nip.io
+          domain: 192.168.42.72.nip.io
   tasks:
      - name: OC Login
        command: oc login -u system:admin
@@ -58,7 +58,7 @@
        tags:
                - eap_setup
      - name: Create Products API app
-       command: oc new-app --template=products-api --param HOSTNAME_HTTP=products.{{hostname}} -n products-api
+       command: oc new-app --template=products-api --param HOSTNAME_HTTP=products.{{domain}} -n products-api
        tags:
                - eap_setup
 
@@ -72,12 +72,12 @@
        tags:
                - 3scale_setup
      - name: Create 3scale app
-       command: oc new-app --template=threescale-amp-jdg --param WILDCARD_DOMAIN={{hostname}} --param HOSTNAME_HTTP=datagrid.{{hostname}}
+       command: oc new-app --template=threescale-amp-jdg --param WILDCARD_DOMAIN={{domain}} --param HOSTNAME_HTTP=datagrid.{{domain}}
        tags:
                - 3scale_setup
 
      - name: Wait for 3scale to be Ready
-       uri: url="https://3scale-admin.{{hostname}}" validate_certs=no
+       uri: url="https://3scale-admin.{{domain}}" validate_certs=no
        register: threescale_wait
        until: threescale_wait.status == 200
        retries: 10
@@ -96,7 +96,7 @@
 
      - name: Create API
        uri:
-         url: https://3scale-admin.{{hostname}}/admin/api/services.json
+         url: https://3scale-admin.{{domain}}/admin/api/services.json
          method: POST
          body: "access_token={{access_token.stdout}}&name=Products+API&system_name=products_api"
          status_code: 201
@@ -116,7 +116,7 @@
                 - 3scale_config
      - name: Get Metric ID
        uri:
-          url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service_id }}/metrics.json"
+          url: "https://3scale-admin.{{domain}}/admin/api/services/{{ service_id }}/metrics.json"
           method: GET
           body: "access_token={{access_token.stdout}}"
           status_code: 200
@@ -136,7 +136,7 @@
                 - 3scale_config
      - name: Create Method - AllProducts
        uri:
-           url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service.json.service.id }}/metrics/{{ metric_id  }}/methods.json"
+           url: "https://3scale-admin.{{domain}}/admin/api/services/{{ service.json.service.id }}/metrics/{{ metric_id  }}/methods.json"
            method: POST
            body: "access_token={{access_token.stdout}}&friendly_name=GET+All+Product&system_name=get_all_products&unit=hit"
            status_code: 201
@@ -154,7 +154,7 @@
         msg: "All Products ID: {{method_allprods_id}}"
      - name: Create Method - ProductByID
        uri:
-           url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service.json.service.id }}/metrics/{{ metric_id  }}/methods.json"
+           url: "https://3scale-admin.{{domain}}/admin/api/services/{{ service.json.service.id }}/metrics/{{ metric_id  }}/methods.json"
            method: POST
            body: "access_token={{access_token.stdout}}&friendly_name=GET++Product+By+ID&system_name=get_product&unit=hit"
            status_code: 201
@@ -173,7 +173,7 @@
 
      - name: Create Mapping - All Products
        uri: 
-          url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service.json.service.id }}/proxy/mapping_rules.json"
+          url: "https://3scale-admin.{{domain}}/admin/api/services/{{ service.json.service.id }}/proxy/mapping_rules.json"
           method: POST
           body: "access_token={{access_token.stdout}}&http_method=GET&pattern=/rest/services/products&delta=1&metric_id={{method_allprods_id}}"
           status_code: 201
@@ -184,7 +184,7 @@
                 - 3scale_config
      - name: Create Mapping - Product by ID
        uri:
-          url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service.json.service.id }}/proxy/mapping_rules.json"
+          url: "https://3scale-admin.{{domain}}/admin/api/services/{{ service.json.service.id }}/proxy/mapping_rules.json"
           method: POST
           body: "access_token={{access_token.stdout}}&http_method=GET&pattern=/rest/services/product/{id}&delta=1&metric_id={{method_prodbyid_id}}"
           status_code: 201
@@ -195,7 +195,7 @@
                 - 3scale_config
      - name: Create Application Plan
        uri:
-        url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service_id }}/application_plans.json"
+        url: "https://3scale-admin.{{domain}}/admin/api/services/{{ service_id }}/application_plans.json"
         method: POST
         body: "access_token={{access_token.stdout}}&name=Products+Plan&system_name=products__plan"
         status_code: 201
@@ -212,7 +212,7 @@
 
      - name: Create Account
        uri:
-        url: "https://3scale-admin.{{hostname}}/admin/api/signup.json"
+        url: "https://3scale-admin.{{domain}}/admin/api/signup.json"
         method: POST
         body: "access_token={{access_token.stdout}}&org_name=RHMart&username=rhmart&email=rhmart%40rhmart.com&password=rhmart%40rhmart.com&application_plan_id={{ application_plan_id}}"
         status_code: 201
@@ -232,7 +232,7 @@
          - 3scale_config
      - name: Create Application
        uri:
-        url: "https://3scale-admin.{{hostname}}/admin/api/accounts/{{ account_id }}/applications.json"
+        url: "https://3scale-admin.{{domain}}/admin/api/accounts/{{ account_id }}/applications.json"
         method: POST
         body: "access_token={{access_token.stdout}}&plan_id={{ application_plan_id}}&name=RHMart&description=RHMart+App"
         status_code: 201
@@ -244,9 +244,9 @@
                 - 3scale_config
      - name: Configure Products API Proxy
        uri:
-        url: "https://3scale-admin.{{hostname}}/admin/api/services/{{ service_id }}/proxy.json"
+        url: "https://3scale-admin.{{domain}}/admin/api/services/{{ service_id }}/proxy.json"
         method: PATCH
-        body: "access_token={{access_token.stdout}}&api_backend=http%3A%2F%2Fproducts-api.products-api.svc.cluster.local%3A8080&sandbox_endpoint=https%3A%2F%2Fproducts-apicast-staging.gateway.{{hostname}}:443&endpoint=https%3A%2F%2Fproducts-apicast-production.gateway.{{hostname}}:443"
+        body: "access_token={{access_token.stdout}}&api_backend=http%3A%2F%2Fproducts-api.products-api.svc.cluster.local%3A8080&sandbox_endpoint=https%3A%2F%2Fproducts-apicast-staging.gateway.{{domain}}:443&endpoint=https%3A%2F%2Fproducts-apicast-production.gateway.{{domain}}:443"
         status_code: 200
         headers:
                 Content-Type: "application/x-www-form-urlencoded"
@@ -255,7 +255,7 @@
         - 3scale_config 
      - name: Promote Products API Proxy
        uri:
-          url: "https://3scale-admin.{{hostname}}/admin/api/services/{{service_id}}/proxy/configs/sandbox/1/promote.json"
+          url: "https://3scale-admin.{{domain}}/admin/api/services/{{service_id}}/proxy/configs/sandbox/1/promote.json"
           method: POST
           body: "access_token={{access_token.stdout}}&to=production"
           status_code: 201
@@ -266,9 +266,9 @@
         - 3scale_config
      - name: Configure OOTB API Proxy
        uri:
-        url: "https://3scale-admin.{{hostname}}/admin/api/services/2/proxy.json"
+        url: "https://3scale-admin.{{domain}}/admin/api/services/2/proxy.json"
         method: PATCH
-        body: "access_token={{access_token.stdout}}&api_backend=https%3A%2F%2Fecho-api.3scale.net:443&sandbox_endpoint=https%3A%2F%2Fapi-3scale-apicast-staging.{{hostname}}:443&endpoint=https%3A%2F%2Fapi-3scale-apicast-production.{{hostname}}:443"
+        body: "access_token={{access_token.stdout}}&api_backend=https%3A%2F%2Fecho-api.3scale.net:443&sandbox_endpoint=https%3A%2F%2Fapi-3scale-apicast-staging.{{domain}}:443&endpoint=https%3A%2F%2Fapi-3scale-apicast-production.{{domain}}:443"
         status_code: 200
         headers:
                 Content-Type: "application/x-www-form-urlencoded"
@@ -277,7 +277,7 @@
         - 3scale_config
      - name: Promote OOTB API Proxy
        uri:
-          url: "https://3scale-admin.{{hostname}}/admin/api/services/2/proxy/configs/sandbox/1/promote.json"
+          url: "https://3scale-admin.{{domain}}/admin/api/services/2/proxy/configs/sandbox/1/promote.json"
           method: POST
           body: "access_token={{access_token.stdout}}&to=production"
           status_code: 201
