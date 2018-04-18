@@ -1,6 +1,7 @@
 # 3scale-JDG-Demo
 The idea of this demo is setup an example of how to use RH DataGrid to cache API requests in 3scale API Manager.
 
+![Demo Architecture](3scale+JDG_Demo.png)
 ## Pre-Requisites
 You need to have:
 	* Openshift cluster up & running (you can use *oc cluster up* or *minishift*)
