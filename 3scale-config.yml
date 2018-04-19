@@ -66,6 +66,10 @@
        command: oc new-project 3scale --display-name='3scale API Manager'
        tags:
                - 3scale_setup
+     - name: Create apicast_jdg ConfigMap
+       command: oc create configmap apicast-jdg --from-file apicast_jdg.lua -n 3scale
+       tags:
+              - 3scale_setup
 
      - name: Create 3scale template
        command: oc create -f https://raw.githubusercontent.com/pszuster/3scale-JDG-Demo/master/amp_jdg-template.json -n 3scale
