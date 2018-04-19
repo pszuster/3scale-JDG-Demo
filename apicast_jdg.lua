@@ -56,7 +56,7 @@ end
 
 function storeJDG(premature,jdg_key,data)
     local http_client = http_ng.new()
-    http_client.post('http://'..env.get('APICAST_JDG_URL')..'/rest/default/'..jdg_key,  data,{headers= {['Content-Type']='application/text', ['timeToLiveSeconds']=10}})
+    http_client.post('http://'..env.get('APICAST_JDG_URL')..'/rest/default/'..jdg_key,  data,{headers= {['Content-Type']='application/text', ['timeToLiveSeconds']=60}})
 end
 
 function _M:body_filter()

@@ -4,7 +4,7 @@
   connection: local
   
   vars:
-          domain: 192.168.42.72.nip.io
+          domain: 192.168.42.85.nip.io
   tasks:
      - name: OC Login
        command: oc login -u system:admin
