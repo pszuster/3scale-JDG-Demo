@@ -34,14 +34,6 @@ You need to have:
 		* `ab -n 1000 -c 20 https://api-3scale-apicast-production.<`*`replace with your domain`*`>:443?user_key=<`*`replace with a user_key for this API`*`>`
 	* Compare results with/without caching.
 
-Example results:
-
-| Backend API | With JDG Caching | Without Caching |
-| :---------- | ---------------: | --------------: |
-| Local	Cluster|min: 15, mean: 58, max: 126 |min: 16, mean: 84, max: 181   |
-| Remote Echo |min: 11, mean: 51, max: 86 |min: 171, mean: 278, max: 917 |
-
-
 ### Notes
  * JDG expiration for objects is hardcoded to 60sec (this could be made configurable)
  * You can easily check the existing cached objects at http://datagrid.<replace with your domain>/rest/default
